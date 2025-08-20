@@ -27,6 +27,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     try {
       // Implement your login logic here
       await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Navigate to main app
+      navigation.navigate('Main');
     } catch (error) {
       console.error(error);
     } finally {

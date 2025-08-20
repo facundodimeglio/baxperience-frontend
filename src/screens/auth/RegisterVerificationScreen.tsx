@@ -78,19 +78,11 @@ export const RegisterVerificationScreen: React.FC<RegisterVerificationScreenProp
       // Simulate API call to verify code and complete registration
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      Alert.alert(
-        'Welcome to Baxperience! 🎉',
-        'Your account has been created successfully!',
-        [
-          {
-            text: 'Get Started',
-            onPress: () => {
-              // Navigate to main app or login
-              navigation.navigate('Login');
-            }
-          }
-        ]
-      );
+      // Navigate to complete profile screen
+      navigation.navigate('CompleteProfile', { 
+        email, 
+        registrationData 
+      });
       
     } catch (error) {
       setCodeError('Invalid verification code. Please try again.');
