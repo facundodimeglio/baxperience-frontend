@@ -25,13 +25,16 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
   const [loading, setLoading] = useState(false);
 
   const [tripData, setTripData] = useState({
-    destination: '',
     startDate: null as Date | null,
     endDate: null as Date | null,
-    budget: '',
     travelers: '1',
     tripType: '',
     preferences: [] as string[],
+    baseLocation: '',
+    baseAddress: '',
+    transportMode: '',
+    tripName: '',
+    preferredArea: '',
   });
 
   useEffect(() => {
@@ -49,11 +52,15 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
     ]).start();
   }, []);
 
-  const budgetOptions = [
-    { label: 'Budget-friendly ($0 - $500)', value: 'budget' },
-    { label: 'Mid-range ($500 - $1500)', value: 'mid-range' },
-    { label: 'Luxury ($1500+)', value: 'luxury' },
-    { label: 'No budget limit', value: 'unlimited' },
+  const preferredAreaOptions = [
+    { label: 'No preference (All CABA)', value: 'all' },
+    { label: 'Palermo', value: 'palermo' },
+    { label: 'Recoleta', value: 'recoleta' },
+    { label: 'San Telmo', value: 'san_telmo' },
+    { label: 'Puerto Madero', value: 'puerto_madero' },
+    { label: 'Microcentro', value: 'microcentro' },
+    { label: 'La Boca', value: 'la_boca' },
+    { label: 'Barrio Norte', value: 'barrio_norte' },
   ];
 
   const travelerOptions = [
@@ -72,45 +79,59 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
     { label: 'Romantic Getaway', value: 'romantic' },
   ];
 
-  const quickDestinations = [
-    { name: 'Buenos Aires', emoji: '🏙️' },
-    { name: 'Bariloche', emoji: '🏔️' },
-    { name: 'Mendoza', emoji: '🍷' },
-    { name: 'Salta', emoji: '⛰️' },
-    { name: 'Ushuaia', emoji: '🐧' },
-    { name: 'Córdoba', emoji: '🏛️' },
+  const transportOptions = [
+    { label: 'Walking', value: 'walking' },
+    { label: 'Public Transport', value: 'public' },
+    { label: 'Car/Taxi', value: 'car' },
+    { label: 'Bicycle', value: 'bicycle' },
+    { label: 'Mixed (Flexible)', value: 'mixed' },
+  ];
+
+  const baseLocationOptions = [
+    { label: 'Hotel/Accommodation', value: 'hotel' },
+    { label: 'Palermo', value: 'palermo' },
+    { label: 'Recoleta', value: 'recoleta' },
+    { label: 'San Telmo', value: 'san_telmo' },
+    { label: 'Puerto Madero', value: 'puerto_madero' },
+    { label: 'Microcentro', value: 'microcentro' },
+    { label: 'Other', value: 'other' },
+  ];
+
+  const popularAreas = [
+    { name: 'Palermo', emoji: '🌳', description: 'Parks & nightlife' },
+    { name: 'Recoleta', emoji: '🏛️', description: 'Museums & culture' },
+    { name: 'San Telmo', emoji: '🎭', description: 'Tango & history' },
+    { name: 'Puerto Madero', emoji: '🏢', description: 'Modern & waterfront' },
+    { name: 'La Boca', emoji: '🎨', description: 'Colorful & artistic' },
+    { name: 'Microcentro', emoji: '🏪', description: 'Business & shopping' },
   ];
 
   const handleCreateTrip = async () => {
-    if (!tripData.destination || !tripData.startDate || !tripData.endDate) {
-      Alert.alert('Missing Information', 'Please fill in all required fields.');
+    // Validation
+    if (!tripData.tripName.trim()) {
+      Alert.alert('Missing Information', 'Please enter a name for your trip.');
+      return;
+    }
+    if (!tripData.startDate || !tripData.endDate) {
+      Alert.alert('Missing Information', 'Please select your travel dates.');
+      return;
+    }
+    if (!tripData.baseLocation || !tripData.transportMode) {
+      Alert.alert('Missing Information', 'Please select your base location and preferred transport mode.');
       return;
     }
 
     setLoading(true);
     
     try {
-      // Simulate AI trip generation
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Add Buenos Aires as destination since it's always CABA
+      const completeData = {
+        ...tripData,
+        destination: 'Buenos Aires, CABA'
+      };
       
-      Alert.alert(
-        'Trip Created! 🎉',
-        'Your AI-generated itinerary is ready! Check your trip history to view the details.',
-        [
-          { text: 'View Trip', onPress: () => navigation.navigate('TripHistory') },
-          { text: 'Create Another', onPress: () => {
-            setTripData({
-              destination: '',
-              startDate: null,
-              endDate: null,
-              budget: '',
-              travelers: '1',
-              tripType: '',
-              preferences: [],
-            });
-          }},
-        ]
-      );
+      // Navigate to itinerary generation screen
+      navigation.navigate('ItineraryGeneration', { tripData: completeData });
       
     } catch (error) {
       Alert.alert('Error', 'Failed to create trip. Please try again.');
@@ -123,8 +144,8 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
     setTripData(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleQuickDestination = (destination: string) => {
-    setTripData(prev => ({ ...prev, destination }));
+  const handleAreaSelection = (area: string) => {
+    setTripData(prev => ({ ...prev, preferredArea: area }));
   };
 
   const calculateDays = () => {
@@ -167,7 +188,7 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Destination Section */}
+        {/* Trip Name Section */}
         <Animated.View 
           style={[
             styles.section,
@@ -177,33 +198,61 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
             }
           ]}
         >
-          <Text style={styles.sectionTitle}>🌍 Where to?</Text>
-          
+          <Text style={styles.sectionTitle}>✈️ Trip Name</Text>
           <CustomInput
-            label="Destination"
-            placeholder="Enter city or country"
-            value={tripData.destination}
-            onChangeText={updateTripData('destination')}
+            label="What should we call this trip?"
+            placeholder="e.g., Buenos Aires Adventure, Weekend Getaway..."
+            value={tripData.tripName}
+            onChangeText={updateTripData('tripName')}
+          />
+        </Animated.View>
+
+        {/* Buenos Aires Focus Section */}
+        <Animated.View 
+          style={[
+            styles.section,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          <Text style={styles.sectionTitle}>🏙️ Exploring Buenos Aires</Text>
+          
+          <View style={styles.destinationInfo}>
+            <Text style={styles.destinationFixed}>📍 Buenos Aires, CABA</Text>
+            <Text style={styles.destinationSubtext}>
+              Discover the best of Argentina's capital city
+            </Text>
+          </View>
+          
+          <CustomDropdown
+            label="Preferred Area (Optional)"
+            placeholder="Any area preference?"
+            options={preferredAreaOptions}
+            selectedValue={tripData.preferredArea}
+            onSelect={updateTripData('preferredArea')}
           />
           
-          <Text style={styles.quickSelectTitle}>Quick Select:</Text>
+          <Text style={styles.quickSelectTitle}>Popular Areas:</Text>
           <View style={styles.quickDestinations}>
-            {quickDestinations.map((dest) => (
+            {popularAreas.map((area) => (
               <TouchableOpacity
-                key={dest.name}
+                key={area.name}
                 style={[
                   styles.quickDestButton,
-                  tripData.destination === dest.name && styles.quickDestButtonActive
+                  tripData.preferredArea === area.name.toLowerCase() && styles.quickDestButtonActive
                 ]}
-                onPress={() => handleQuickDestination(dest.name)}
+                onPress={() => handleAreaSelection(area.name.toLowerCase())}
               >
-                <Text style={styles.quickDestEmoji}>{dest.emoji}</Text>
+                <Text style={styles.quickDestEmoji}>{area.emoji}</Text>
                 <Text style={[
                   styles.quickDestText,
-                  tripData.destination === dest.name && styles.quickDestTextActive
+                  tripData.preferredArea === area.name.toLowerCase() && styles.quickDestTextActive
                 ]}>
-                  {dest.name}
+                  {area.name}
                 </Text>
+                <Text style={styles.areaDescription}>{area.description}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -250,6 +299,58 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
           )}
         </Animated.View>
 
+        {/* Base Location Section */}
+        <Animated.View 
+          style={[
+            styles.section,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          <Text style={styles.sectionTitle}>📍 Starting Point</Text>
+          
+          <CustomDropdown
+            label="Base Location"
+            placeholder="Where will you be staying?"
+            options={baseLocationOptions}
+            selectedValue={tripData.baseLocation}
+            onSelect={updateTripData('baseLocation')}
+          />
+          
+          {(tripData.baseLocation === 'hotel' || tripData.baseLocation === 'other') && (
+            <CustomInput
+              label="Specific Address"
+              placeholder="Enter hotel name or address"
+              value={tripData.baseAddress}
+              onChangeText={updateTripData('baseAddress')}
+              style={styles.addressInput}
+            />
+          )}
+        </Animated.View>
+
+        {/* Transport Section */}
+        <Animated.View 
+          style={[
+            styles.section,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          <Text style={styles.sectionTitle}>🚶‍♂️ How do you prefer to get around?</Text>
+          
+          <CustomDropdown
+            label="Preferred Transport Mode"
+            placeholder="Select your transportation preference"
+            options={transportOptions}
+            selectedValue={tripData.transportMode}
+            onSelect={updateTripData('transportMode')}
+          />
+        </Animated.View>
+
         {/* Trip Details Section */}
         <Animated.View 
           style={[
@@ -261,14 +362,6 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
           ]}
         >
           <Text style={styles.sectionTitle}>🎯 Trip Details</Text>
-          
-          <CustomDropdown
-            label="Budget Range"
-            placeholder="Select your budget"
-            options={budgetOptions}
-            selectedValue={tripData.budget}
-            onSelect={updateTripData('budget')}
-          />
           
           <CustomDropdown
             label="Number of Travelers"
@@ -299,14 +392,14 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
         >
           <Text style={styles.aiInfoTitle}>🤖 AI Magic</Text>
           <Text style={styles.aiInfoText}>
-            Our AI will analyze your preferences, budget, and travel dates to create a personalized itinerary with:
+            Our AI will analyze your preferences and travel dates to create a personalized Buenos Aires itinerary with:
           </Text>
           <View style={styles.aiFeatures}>
-            <Text style={styles.aiFeature}>• Recommended attractions & activities</Text>
-            <Text style={styles.aiFeature}>• Optimal daily schedules</Text>
-            <Text style={styles.aiFeature}>• Restaurant suggestions</Text>
-            <Text style={styles.aiFeature}>• Transportation options</Text>
-            <Text style={styles.aiFeature}>• Budget breakdown</Text>
+            <Text style={styles.aiFeature}>• Recommended attractions & activities across CABA</Text>
+            <Text style={styles.aiFeature}>• Optimal daily schedules with clustering</Text>
+            <Text style={styles.aiFeature}>• Restaurant suggestions in your preferred areas</Text>
+            <Text style={styles.aiFeature}>• Transportation options within Buenos Aires</Text>
+            <Text style={styles.aiFeature}>• Cultural events happening during your visit</Text>
           </View>
         </Animated.View>
 
@@ -466,5 +559,32 @@ const styles = StyleSheet.create({
   },
   createButton: {
     paddingVertical: 18,
+  },
+  addressInput: {
+    marginTop: 12,
+  },
+  destinationInfo: {
+    backgroundColor: palette.background.paper,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  destinationFixed: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: palette.primary.main,
+    marginBottom: 4,
+  },
+  destinationSubtext: {
+    fontSize: 14,
+    color: palette.text.secondary,
+    textAlign: 'center',
+  },
+  areaDescription: {
+    fontSize: 10,
+    color: palette.text.disabled,
+    textAlign: 'center',
+    marginTop: 2,
   },
 });

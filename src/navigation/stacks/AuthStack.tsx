@@ -9,7 +9,7 @@ import { TravelPreferencesScreen } from '../../screens/auth/TravelPreferencesScr
 import { ForgotPasswordScreen } from '../../screens/auth/ForgotPasswordScreen';
 import { CodeVerificationScreen } from '../../screens/auth/CodeVerificationScreen';
 import { ResetPasswordScreen } from '../../screens/auth/ResetPasswordScreen';
-import { MainTabs } from '../tabs/MainTabs';
+import { MainStack } from './MainStack';
 
 const Stack = createNativeStackNavigator();
 
@@ -30,7 +30,7 @@ export const AuthStack = () => {
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="CodeVerification" component={CodeVerificationScreen} />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-      <Stack.Screen name="Main" component={MainTabs} />
+      <Stack.Screen name="Main" component={MainStack} />
     </Stack.Navigator>
   );
 };

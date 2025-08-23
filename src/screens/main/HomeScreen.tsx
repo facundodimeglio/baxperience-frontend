@@ -138,6 +138,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               title="Create New Trip"
               onPress={() => navigation.navigate('CreateTrip')}
               style={styles.primaryButton}
+              textStyle={styles.primaryButtonText}
             />
             <TouchableOpacity 
               style={styles.secondaryButton}
@@ -346,6 +347,11 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: palette.secondary.main,
+  },
+  primaryButtonText: {
+    color: palette.primary.main,
+    fontSize: 16,
+    fontWeight: '600',
   },
   secondaryButton: {
     borderWidth: 2,

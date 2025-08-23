@@ -23,10 +23,15 @@ const TabIcon: React.FC<TabIconProps> = ({ focused, icon, label }) => {
       ]}>
         {icon}
       </Text>
-      <Text style={[
-        styles.tabLabel,
-        focused && styles.tabLabelFocused
-      ]}>
+      <Text 
+        style={[
+          styles.tabLabel,
+          focused && styles.tabLabelFocused
+        ]}
+        numberOfLines={1}
+        adjustsFontSizeToFit={true}
+        minimumFontScale={0.8}
+      >
         {label}
       </Text>
     </View>
@@ -80,9 +85,9 @@ const styles = StyleSheet.create({
     backgroundColor: palette.background.default,
     borderTopWidth: 1,
     borderTopColor: palette.secondary.dark,
-    height: 80,
-    paddingBottom: 10,
-    paddingTop: 10,
+    height: 85,
+    paddingBottom: 12,
+    paddingTop: 8,
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: {
@@ -95,21 +100,27 @@ const styles = StyleSheet.create({
   tabIcon: {
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 60,
+    minWidth: 60,
+    paddingHorizontal: 4,
   },
   tabIconText: {
-    fontSize: 20,
-    marginBottom: 4,
+    fontSize: 18,
+    marginBottom: 3,
   },
   tabIconTextFocused: {
-    transform: [{ scale: 1.1 }],
+    transform: [{ scale: 1.05 }],
   },
   tabLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: palette.text.disabled,
     fontWeight: '500',
+    textAlign: 'center',
+    flexShrink: 1,
   },
   tabLabelFocused: {
     color: palette.primary.main,
     fontWeight: '600',
+    fontSize: 10,
   },
 });
