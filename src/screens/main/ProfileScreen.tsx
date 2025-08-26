@@ -38,12 +38,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   ];
 
   const menuItems = [
-    { id: 'edit-profile', title: 'Edit Profile', icon: '✏️', onPress: () => {} },
-    { id: 'preferences', title: 'Travel Preferences', icon: '🎯', onPress: () => {} },
-    { id: 'notifications', title: 'Notifications', icon: '🔔', onPress: () => {} },
-    { id: 'privacy', title: 'Privacy Settings', icon: '🔒', onPress: () => {} },
-    { id: 'help', title: 'Help & Support', icon: '❓', onPress: () => {} },
-    { id: 'about', title: 'About Baxperience', icon: 'ℹ️', onPress: () => {} },
+    { id: 'edit-profile', title: 'Edit Profile', icon: '✏️', onPress: () => navigation.navigate('EditProfile') },
+    { id: 'preferences', title: 'Travel Preferences', icon: '🎯', onPress: () => navigation.navigate('TravelPreferences') },
+    { id: 'notifications', title: 'Notifications', icon: '🔔', onPress: () => navigation.navigate('Notifications') },
+    { id: 'privacy', title: 'Privacy Settings', icon: '🔒', onPress: () => navigation.navigate('PrivacySettings') },
+    { id: 'help', title: 'Help & Support', icon: '❓', onPress: () => navigation.navigate('HelpSupport') },
+    { id: 'about', title: 'About Baxperience', icon: 'ℹ️', onPress: () => navigation.navigate('About') },
   ];
 
   const handleLogout = () => {
@@ -67,9 +67,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       {/* Header */}
       <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
         <View style={styles.profileSection}>
-          <View style={styles.avatarContainer}>
+          <TouchableOpacity 
+            style={styles.avatarContainer}
+            onPress={() => navigation.navigate('ChangePhoto')}
+          >
             <Text style={styles.avatarText}>JD</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.profileInfo}>
             <Text style={styles.userName}>John Doe</Text>
             <Text style={styles.userEmail}>john.doe@example.com</Text>
@@ -121,7 +124,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               </View>
             ))}
           </View>
-          <TouchableOpacity style={styles.editPreferencesButton}>
+          <TouchableOpacity 
+            style={styles.editPreferencesButton}
+            onPress={() => navigation.navigate('TravelPreferences')}
+          >
             <Text style={styles.editPreferencesText}>Edit Preferences</Text>
           </TouchableOpacity>
         </Animated.View>

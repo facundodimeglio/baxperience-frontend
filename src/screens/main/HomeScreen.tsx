@@ -67,7 +67,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       subtitle: 'Local experiences',
       icon: '📍',
       color: '#4ECDC4',
-      onPress: () => {/* Handle nearby */},
+      onPress: () => navigation.navigate('NearbyExperiences'),
     },
     {
       id: 'favorites',
