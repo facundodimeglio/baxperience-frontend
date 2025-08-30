@@ -33,7 +33,6 @@ export const POIDetailScreen: React.FC<POIDetailScreenProps> = ({
   const { poi, tripData } = route.params;
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
-  const [isFavorite, setIsFavorite] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
 
   useEffect(() => {
@@ -50,11 +49,6 @@ export const POIDetailScreen: React.FC<POIDetailScreenProps> = ({
       }),
     ]).start();
   }, []);
-
-  const toggleFavorite = () => {
-    setIsFavorite(!isFavorite);
-    // In real app, save to user favorites
-  };
 
   const openInMaps = () => {
     const { lat, lng } = poi.coordinates;
@@ -142,6 +136,16 @@ export const POIDetailScreen: React.FC<POIDetailScreenProps> = ({
   const nearbyPOIs = getNearbyPOIs();
   const photos = getPhotos();
 
+  // Check if contact information is available
+  const hasContactInfo = () => {
+    const contact = detailedInfo.contact;
+    return contact && (
+      (contact.phone && contact.phone.trim() !== '') ||
+      (contact.website && contact.website.trim() !== '') ||
+      (contact.email && contact.email.trim() !== '')
+    );
+  };
+
   const renderHeader = () => (
     <Animated.View 
       style={[
@@ -158,13 +162,6 @@ export const POIDetailScreen: React.FC<POIDetailScreenProps> = ({
           style={styles.backButton}
         >
           <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          onPress={toggleFavorite}
-          style={styles.favoriteButton}
-        >
-          <Text style={styles.favoriteText}>{isFavorite ? '❤️' : '🤍'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -394,16 +391,6 @@ export const POIDetailScreen: React.FC<POIDetailScreenProps> = ({
         onPress={openInMaps}
         style={styles.mapsButton}
       />
-      
-      <View style={styles.secondaryActions}>
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Add to Favorites</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>Share</Text>
-        </TouchableOpacity>
-      </View>
     </Animated.View>
   );
 
@@ -421,9 +408,7 @@ export const POIDetailScreen: React.FC<POIDetailScreenProps> = ({
         {renderScheduleInfo()}
         {renderPhotos()}
         {renderDescription()}
-        {renderDetails()}
-        {renderContact()}
-        {renderNearbyPlaces()}
+        {hasContactInfo() && renderContact()}
         {renderActions()}
       </ScrollView>
     </View>
@@ -453,17 +438,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-  favoriteButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  favoriteText: {
-    fontSize: 20,
-  },
+
   headerContent: {},
   categoryBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -609,57 +584,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  infoGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  infoCard: {
-    backgroundColor: palette.background.paper,
-    borderRadius: 8,
-    padding: 12,
-    flex: 1,
-    marginHorizontal: 4,
-    alignItems: 'center',
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: palette.text.secondary,
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: palette.text.primary,
-    textAlign: 'center',
-  },
-  amenitiesContainer: {
-    backgroundColor: palette.background.paper,
-    borderRadius: 12,
-    padding: 16,
-  },
-  amenitiesTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: palette.text.primary,
-    marginBottom: 12,
-  },
-  amenitiesList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  amenityTag: {
-    backgroundColor: palette.secondary.light,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  amenityText: {
-    fontSize: 12,
-    color: palette.text.primary,
-  },
+
   contactInfo: {
     marginBottom: 20,
   },
@@ -704,63 +629,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: palette.text.secondary,
   },
-  nearbyCard: {
-    backgroundColor: palette.background.paper,
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  nearbyInfo: {
-    flex: 1,
-  },
-  nearbyName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: palette.text.primary,
-    marginBottom: 2,
-  },
-  nearbyCategory: {
-    fontSize: 12,
-    color: palette.text.secondary,
-  },
-  nearbyDetails: {
-    alignItems: 'flex-end',
-  },
-  nearbyDistance: {
-    fontSize: 12,
-    color: palette.primary.main,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  nearbyRating: {
-    fontSize: 12,
-    color: palette.text.secondary,
-  },
+
   actionsContainer: {
     paddingHorizontal: 24,
     paddingVertical: 20,
   },
   mapsButton: {
     marginBottom: 16,
-  },
-  secondaryActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: palette.secondary.dark,
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  actionButtonText: {
-    color: palette.text.primary,
-    fontSize: 14,
-    fontWeight: '500',
   },
 });

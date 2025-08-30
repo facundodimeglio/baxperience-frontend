@@ -35,74 +35,46 @@ export const TravelPreferencesScreen: React.FC<TravelPreferencesScreenProps> = (
 
   const travelPreferences: TravelPreference[] = [
     {
-      id: 'arte',
-      title: 'Arte',
-      description: 'Galleries, exhibitions, street art, and artistic experiences',
-      icon: '🎨',
-      category: 'cultural'
-    },
-    {
-      id: 'gastronomia',
-      title: 'Gastronomía',
-      description: 'Local cuisine, restaurants, food tours, and culinary experiences',
-      icon: '🍽️',
-      category: 'culinary'
-    },
-    {
-      id: 'cine',
-      title: 'Cine',
-      description: 'Movie theaters, film festivals, and cinema experiences',
-      icon: '🎬',
-      category: 'entertainment'
-    },
-    {
       id: 'museos',
-      title: 'Museos',
+      title: 'Museums',
       description: 'Museums, historical sites, and educational experiences',
       icon: '🏛️',
       category: 'cultural'
     },
     {
+      id: 'gastronomia',
+      title: 'Gastronomy',
+      description: 'Local cuisine, restaurants, food tours, and culinary experiences',
+      icon: '🍽️',
+      category: 'culinary'
+    },
+    {
       id: 'monumentos',
-      title: 'Monumentos',
+      title: 'Monuments',
       description: 'Historical monuments, landmarks, and architectural sites',
       icon: '🗿',
       category: 'historical'
     },
     {
-      id: 'naturaleza',
-      title: 'Naturaleza',
-      description: 'Parks, nature reserves, outdoor activities, and eco-tourism',
-      icon: '🌿',
-      category: 'nature'
+      id: 'lugares_historicos',
+      title: 'Historic Places',
+      description: 'Historic sites, heritage buildings, and cultural landmarks',
+      icon: '🏰',
+      category: 'historical'
     },
     {
-      id: 'vida_nocturna',
-      title: 'Vida Nocturna',
-      description: 'Bars, clubs, nightlife, and evening entertainment',
-      icon: '🌃',
+      id: 'entretenimiento',
+      title: 'Entertainment',
+      description: 'Theaters, cinemas, shows, and entertainment venues',
+      icon: '🎭',
       category: 'entertainment'
     },
     {
-      id: 'compras',
-      title: 'Compras',
-      description: 'Shopping centers, local markets, and retail experiences',
-      icon: '🛍️',
-      category: 'leisure'
-    },
-    {
-      id: 'deportes',
-      title: 'Deportes',
-      description: 'Sports events, stadiums, and athletic activities',
-      icon: '⚽',
-      category: 'sports'
-    },
-    {
-      id: 'musica',
-      title: 'Música',
-      description: 'Concerts, live music venues, and musical experiences',
-      icon: '🎵',
-      category: 'entertainment'
+      id: 'eventos',
+      title: 'Events',
+      description: 'Cultural events, festivals, concerts, and special occasions',
+      icon: '🎪',
+      category: 'events'
     }
   ];
 
@@ -149,7 +121,7 @@ export const TravelPreferencesScreen: React.FC<TravelPreferencesScreenProps> = (
       console.log('Complete User Registration Data:', completeUserData);
       
       // Simulate API call to complete registration
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise<void>(resolve => setTimeout(() => resolve(), 2000));
       
       Alert.alert(
         'Welcome to Baxperience! 🎉',
@@ -157,10 +129,7 @@ export const TravelPreferencesScreen: React.FC<TravelPreferencesScreenProps> = (
         [
           {
             text: 'Start Exploring',
-            onPress: () => {
-              // Navigate to main app
-              navigation.navigate('Main');
-            }
+            onPress: () => navigation.navigate('Main')
           }
         ]
       );
@@ -262,10 +231,7 @@ export const TravelPreferencesScreen: React.FC<TravelPreferencesScreenProps> = (
           onPress={handleCompleteRegistration}
           loading={loading}
           disabled={getSelectedCount() === 0}
-          style={[
-            styles.completeButton,
-            getSelectedCount() === 0 && styles.disabledButton
-          ]}
+          style={styles.completeButton}
         />
       </ScrollView>
     </View>
