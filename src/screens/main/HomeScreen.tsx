@@ -69,14 +69,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       color: '#4ECDC4',
       onPress: () => navigation.navigate('NearbyExperiences'),
     },
-    {
-      id: 'favorites',
-      title: 'Favorites',
-      subtitle: 'Saved places',
-      icon: '❤️',
-      color: '#45B7D1',
-      onPress: () => {/* Handle favorites */},
-    },
   ];
 
   const recentTrips = [
@@ -175,9 +167,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 ]}
               >
                 <TouchableOpacity
-                  style={[styles.quickActionButton, { borderColor: action.color }]}
+                  style={[styles.quickActionButton, { borderColor: action.color + '20' }]}
                   onPress={action.onPress}
-                  activeOpacity={0.8}
+                  activeOpacity={0.9}
+                  onPressIn={() => {
+                    // Optional: Add scale animation on press
+                  }}
                 >
                   <View style={[styles.quickActionIcon, { backgroundColor: action.color }]}>
                     <Text style={styles.quickActionIconText}>{action.icon}</Text>
@@ -389,47 +384,62 @@ const styles = StyleSheet.create({
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    justifyContent: 'center',
+    gap: 16,
   },
   quickActionCard: {
-    width: (width - 60) / 2,
+    width: width > 600 ? (width - 80) / 3 - 8 : (width - 60) / 2,
+    minWidth: 140,
+    maxWidth: 180,
   },
   quickActionButton: {
-    backgroundColor: palette.background.default,
-    borderRadius: 16,
+    backgroundColor: palette.background.paper,
+    borderRadius: 20,
     padding: 20,
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    transform: [{ scale: 1 }],
+  },
+  quickActionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 1,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  quickActionIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   quickActionIconText: {
-    fontSize: 24,
+    fontSize: 22,
   },
   quickActionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '700',
     color: palette.text.primary,
-    marginBottom: 4,
+    marginBottom: 6,
+    textAlign: 'center',
   },
   quickActionSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     color: palette.text.secondary,
     textAlign: 'center',
+    lineHeight: 18,
   },
   featureCard: {
     flexDirection: 'row',
