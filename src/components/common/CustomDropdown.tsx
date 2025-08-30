@@ -7,6 +7,7 @@ import {
   Modal,
   ScrollView,
   ViewStyle,
+  TextInput,
 } from 'react-native';
 import { palette } from '../../theme/colors/palette';
 
@@ -23,6 +24,7 @@ interface CustomDropdownProps {
   onSelect: (value: string) => void;
   error?: string;
   containerStyle?: ViewStyle;
+  searchable?: boolean;
 }
 
 export const CustomDropdown: React.FC<CustomDropdownProps> = ({
@@ -33,10 +35,18 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
   onSelect,
   error,
   containerStyle,
+  searchable = false,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [searchText, setSearchText] = useState('');
 
   const selectedOption = options.find(option => option.value === selectedValue);
+  
+  // Filter options based on search text
+  const filteredOptions = searchText.trim() 
+    ? options.filter(option => 
+        option.label.toLowerCase().includes(searchText.toLowerCase()))
+    : options;
 
   const handleSelect = (value: string) => {
     onSelect(value);
@@ -90,27 +100,52 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({
               </TouchableOpacity>
             </View>
             
+            {searchable && (
+              <View style={styles.searchContainer}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search..."
+                  value={searchText}
+                  onChangeText={setSearchText}
+                  autoCapitalize="none"
+                />
+                {searchText ? (
+                  <TouchableOpacity 
+                    onPress={() => setSearchText('')}
+                    style={styles.clearSearch}
+                  >
+                    <Text style={styles.clearSearchText}>×</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            )}
             <ScrollView style={styles.optionsList}>
-              {options.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[
-                    styles.option,
-                    selectedValue === option.value && styles.selectedOption
-                  ]}
-                  onPress={() => handleSelect(option.value)}
-                >
-                  <Text style={[
-                    styles.optionText,
-                    selectedValue === option.value && styles.selectedOptionText
-                  ]}>
-                    {option.label}
-                  </Text>
-                  {selectedValue === option.value && (
-                    <Text style={styles.checkmark}>✓</Text>
-                  )}
-                </TouchableOpacity>
-              ))}
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.option,
+                      selectedValue === option.value && styles.selectedOption
+                    ]}
+                    onPress={() => handleSelect(option.value)}
+                  >
+                    <Text style={[
+                      styles.optionText,
+                      selectedValue === option.value && styles.selectedOptionText
+                    ]}>
+                      {option.label}
+                    </Text>
+                    {selectedValue === option.value && (
+                      <Text style={styles.checkmark}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.noResults}>
+                  <Text style={styles.noResultsText}>No results found</Text>
+                </View>
+              )}
             </ScrollView>
           </View>
         </TouchableOpacity>
@@ -203,6 +238,32 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: palette.text.disabled,
   },
+  searchContainer: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.secondary.dark,
+    position: 'relative',
+  },
+  searchInput: {
+    backgroundColor: palette.background.paper,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: palette.secondary.dark,
+    fontSize: 16,
+    color: palette.text.primary,
+    paddingRight: 40, // Space for clear button
+  },
+  clearSearch: {
+    position: 'absolute',
+    right: 28,
+    top: 28,
+    padding: 4,
+  },
+  clearSearchText: {
+    fontSize: 20,
+    color: palette.text.disabled,
+  },
   optionsList: {
     maxHeight: 300,
   },
@@ -230,5 +291,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: palette.secondary.main,
     fontWeight: 'bold',
+  },
+  noResults: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  noResultsText: {
+    fontSize: 16,
+    color: palette.text.disabled,
+    fontStyle: 'italic',
   },
 });

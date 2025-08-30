@@ -8,7 +8,10 @@ import {
   Animated,
   StatusBar,
   Alert,
+  Platform,
+  PermissionsAndroid,
 } from 'react-native';
+import Geolocation from 'react-native-geolocation-service';
 import { CustomInput } from '../../components/common/CustomInput';
 import { CustomButton } from '../../components/common/CustomButton';
 import { CustomDropdown } from '../../components/common/CustomDropdown';
@@ -23,18 +26,18 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(30));
   const [loading, setLoading] = useState(false);
+  const [gettingLocation, setGettingLocation] = useState(false);
 
   const [tripData, setTripData] = useState({
     startDate: null as Date | null,
     endDate: null as Date | null,
-    travelers: '1',
-    tripType: '',
     preferences: [] as string[],
     baseLocation: '',
     baseAddress: '',
     transportMode: '',
     tripName: '',
     preferredArea: '',
+    durationHours: '4', // Default duration of 4 hours for one-day itineraries
   });
 
   useEffect(() => {
@@ -54,30 +57,54 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
 
   const preferredAreaOptions = [
     { label: 'No preference (All CABA)', value: 'all' },
-    { label: 'Palermo', value: 'palermo' },
-    { label: 'Recoleta', value: 'recoleta' },
-    { label: 'San Telmo', value: 'san_telmo' },
-    { label: 'Puerto Madero', value: 'puerto_madero' },
-    { label: 'Microcentro', value: 'microcentro' },
+    { label: 'Agronomia', value: 'agronomia' },
+    { label: 'Almagro', value: 'almagro' },
+    { label: 'Balvanera', value: 'balvanera' },
+    { label: 'Barracas', value: 'barracas' },
+    { label: 'Belgrano', value: 'belgrano' },
+    { label: 'Boedo', value: 'boedo' },
+    { label: 'Caballito', value: 'caballito' },
+    { label: 'Chacarita', value: 'chacarita' },
+    { label: 'Coghlan', value: 'coghlan' },
+    { label: 'Colegiales', value: 'colegiales' },
+    { label: 'Constitucion', value: 'constitucion' },
+    { label: 'Flores', value: 'flores' },
+    { label: 'Floresta', value: 'floresta' },
     { label: 'La Boca', value: 'la_boca' },
-    { label: 'Barrio Norte', value: 'barrio_norte' },
+    { label: 'Liniers', value: 'liniers' },
+    { label: 'Mataderos', value: 'mataderos' },
+    { label: 'Monte Castro', value: 'monte_castro' },
+    { label: 'Monserrat', value: 'monserrat' },
+    { label: 'Nueva Pompeya', value: 'nueva_pompeya' },
+    { label: 'Nuñez', value: 'nunez' },
+    { label: 'Palermo', value: 'palermo' },
+    { label: 'Parque Avellaneda', value: 'parque_avellaneda' },
+    { label: 'Parque Chacabuco', value: 'parque_chacabuco' },
+    { label: 'Parque Chas', value: 'parque_chas' },
+    { label: 'Parque Patricios', value: 'parque_patricios' },
+    { label: 'Paternal', value: 'paternal' },
+    { label: 'Puerto Madero', value: 'puerto_madero' },
+    { label: 'Recoleta', value: 'recoleta' },
+    { label: 'Retiro', value: 'retiro' },
+    { label: 'Saavedra', value: 'saavedra' },
+    { label: 'San Cristobal', value: 'san_cristobal' },
+    { label: 'San Nicolas', value: 'san_nicolas' },
+    { label: 'San Telmo', value: 'san_telmo' },
+    { label: 'Versalles', value: 'versalles' },
+    { label: 'Villa Crespo', value: 'villa_crespo' },
+    { label: 'Villa Del Parque', value: 'villa_del_parque' },
+    { label: 'Villa Devoto', value: 'villa_devoto' },
+    { label: 'Villa Lugano', value: 'villa_lugano' },
+    { label: 'Villa Luro', value: 'villa_luro' },
+    { label: 'Villa Ortuzar', value: 'villa_ortuzar' },
+    { label: 'Villa Pueyrredon', value: 'villa_pueyrredon' },
+    { label: 'Villa Riachuelo', value: 'villa_riachuelo' },
+    { label: 'Villa Santa Rita', value: 'villa_santa_rita' },
+    { label: 'Villa Soldati', value: 'villa_soldati' },
+    { label: 'Villa Urquiza', value: 'villa_urquiza' }
   ];
 
-  const travelerOptions = [
-    { label: 'Solo (1 person)', value: '1' },
-    { label: 'Couple (2 people)', value: '2' },
-    { label: 'Small group (3-5 people)', value: '3-5' },
-    { label: 'Large group (6+ people)', value: '6+' },
-  ];
 
-  const tripTypeOptions = [
-    { label: 'Leisure & Relaxation', value: 'leisure' },
-    { label: 'Adventure & Outdoor', value: 'adventure' },
-    { label: 'Cultural & Historical', value: 'cultural' },
-    { label: 'Business & Work', value: 'business' },
-    { label: 'Family Vacation', value: 'family' },
-    { label: 'Romantic Getaway', value: 'romantic' },
-  ];
 
   const transportOptions = [
     { label: 'Walking', value: 'walking' },
@@ -120,6 +147,15 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
       Alert.alert('Missing Information', 'Please select your base location and preferred transport mode.');
       return;
     }
+    
+    // Validate duration hours for single-day trips
+    if (isSingleDayTrip()) {
+      const hours = parseInt(tripData.durationHours);
+      if (isNaN(hours) || hours <= 0 || hours > 24) {
+        Alert.alert('Invalid Duration', 'Please enter a valid duration between 1 and 24 hours.');
+        return;
+      }
+    }
 
     setLoading(true);
     
@@ -127,7 +163,8 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
       // Add Buenos Aires as destination since it's always CABA
       const completeData = {
         ...tripData,
-        destination: 'Buenos Aires, CABA'
+        destination: 'Buenos Aires, CABA',
+        isSingleDay: isSingleDayTrip()
       };
       
       // Navigate to itinerary generation screen
@@ -155,6 +192,194 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
       return diffDays;
     }
     return 0;
+  };
+
+  // Check if it's a single day trip
+  const isSingleDayTrip = () => {
+    if (tripData.startDate && tripData.endDate) {
+      // Check if the same day (ignoring time)
+      return (
+        tripData.startDate.getDate() === tripData.endDate.getDate() &&
+        tripData.startDate.getMonth() === tripData.endDate.getMonth() &&
+        tripData.startDate.getFullYear() === tripData.endDate.getFullYear()
+      );
+    }
+    return false;
+  };
+
+  // Request location permissions
+  const requestLocationPermission = async (): Promise<boolean> => {
+    if (Platform.OS === 'ios') {
+      const result = await Geolocation.requestAuthorization('whenInUse');
+      return result === 'granted';
+    } else {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        {
+          title: 'Location Permission',
+          message: 'This app needs access to your location to automatically fill your address in Buenos Aires.',
+          buttonNeutral: 'Ask Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'Allow',
+        },
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    }
+  };
+
+  // Reverse geocoding function to convert coordinates to address
+  const reverseGeocode = async (latitude: number, longitude: number): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&accept-language=es`,
+        {
+          headers: {
+            'User-Agent': 'BAXperience/1.0',
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const text = await response.text();
+      
+      // Check if response is valid JSON
+      if (!text || text.trim().startsWith('<')) {
+        throw new Error('Invalid response format');
+      }
+      
+      const data = JSON.parse(text);
+      
+      if (data && data.display_name) {
+        // Validate that the location is in Buenos Aires, CABA
+        const address = data.address || {};
+        const city = address.city || address.town || address.municipality || '';
+        const state = address.state || address.province || '';
+        const country = address.country || '';
+        const countryCode = address.country_code || '';
+        
+        // More flexible validation for Buenos Aires, Argentina
+        const isInArgentina = (
+          country.toLowerCase().includes('argentina') || 
+          country.toLowerCase().includes('arg') ||
+          countryCode.toLowerCase() === 'ar'
+        );
+        
+        const isInBuenosAires = (
+          city.toLowerCase().includes('buenos aires') || 
+          city.toLowerCase().includes('ciudad autónoma') ||
+          city.toLowerCase().includes('caba') ||
+          state.toLowerCase().includes('buenos aires') ||
+          state.toLowerCase().includes('ciudad autónoma') ||
+          state.toLowerCase().includes('caba') ||
+          data.display_name.toLowerCase().includes('buenos aires') ||
+          data.display_name.toLowerCase().includes('caba')
+        );
+        
+        // Log location info for debugging emulator issues
+        if (!isInArgentina || !isInBuenosAires) {
+          console.log('🔍 Location received:', {
+            detected: `${city}, ${state}, ${country}`,
+            isEmulator: city === 'Mountain View' && state === 'California'
+          });
+        }
+        
+        if (!isInArgentina || !isInBuenosAires) {
+          throw new Error('LOCATION_NOT_IN_CABA');
+        }
+        
+        // Extract relevant parts of the address
+        const addressParts = [];
+        
+        if (address.house_number && address.road) {
+          addressParts.push(`${address.house_number} ${address.road}`);
+        } else if (address.road) {
+          addressParts.push(address.road);
+        }
+        
+        if (address.neighbourhood || address.suburb) {
+          addressParts.push(address.neighbourhood || address.suburb);
+        }
+        
+        if (address.city || address.town || address.village) {
+          addressParts.push(address.city || address.town || address.village);
+        }
+        
+        return addressParts.length > 0 ? addressParts.join(', ') : data.display_name;
+      }
+      
+      return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+    } catch (error) {
+      if (error instanceof Error && error.message === 'LOCATION_NOT_IN_CABA') {
+        // This is a validation error, not a technical error - don't log to console
+        throw error;
+      }
+      // Only log technical errors to console
+      console.error('Reverse geocoding technical error:', error);
+      return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+    }
+  };
+
+  // Get current location and fill address
+  const getCurrentLocation = async () => {
+    setGettingLocation(true);
+    
+    try {
+      const hasPermission = await requestLocationPermission();
+      
+      if (!hasPermission) {
+        Alert.alert(
+          'Permission Denied', 
+          'Location permission is required to automatically fill your address.'
+        );
+        return;
+      }
+      
+      Geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          
+          try {
+            const address = await reverseGeocode(latitude, longitude);
+            setTripData(prev => ({ ...prev, baseAddress: address }));
+            Alert.alert('Perfect!', 'Address has been filled with your current location in Buenos Aires.');
+          } catch (error) {
+            if (error instanceof Error && error.message === 'LOCATION_NOT_IN_CABA') {
+              // This is a validation case, not a technical error - don't log to console
+              Alert.alert(
+                'Location outside CABA', 
+                'Your current location is not in Buenos Aires City (CABA). This feature is only available for users within CABA.\n\nPlease enter your address manually.'
+              );
+            } else {
+              // Only log technical errors to console
+              console.error('Technical error getting address:', error);
+              Alert.alert('Error', 'Could not get address from your location. Please enter the address manually.');
+            }
+          } finally {
+            setGettingLocation(false);
+          }
+        },
+        (error) => {
+          console.error('Geolocation service error:', error);
+          setGettingLocation(false);
+          Alert.alert(
+            'Location Error', 
+            'Could not get your current location. Please make sure location services are enabled.'
+          );
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 10000,
+        }
+      );
+    } catch (error) {
+      console.error('Location permission error:', error);
+      setGettingLocation(false);
+      Alert.alert('Error', 'An error occurred while requesting location permissions.');
+    }
   };
 
   return (
@@ -207,7 +432,7 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
           />
         </Animated.View>
 
-        {/* Buenos Aires Focus Section */}
+        {/* Preferred Area Section */}
         <Animated.View 
           style={[
             styles.section,
@@ -217,46 +442,19 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
             }
           ]}
         >
-          <Text style={styles.sectionTitle}>🏙️ Exploring Buenos Aires</Text>
-          
-          <View style={styles.destinationInfo}>
-            <Text style={styles.destinationFixed}>📍 Buenos Aires, CABA</Text>
-            <Text style={styles.destinationSubtext}>
-              Discover the best of Argentina's capital city
-            </Text>
-          </View>
+          <Text style={styles.sectionTitle}>📍 Preferred Area</Text>
           
           <CustomDropdown
             label="Preferred Area (Optional)"
-            placeholder="Any area preference?"
+            placeholder="Select or type to search neighborhoods"
             options={preferredAreaOptions}
             selectedValue={tripData.preferredArea}
             onSelect={updateTripData('preferredArea')}
+            searchable={true}
           />
-          
-          <Text style={styles.quickSelectTitle}>Popular Areas:</Text>
-          <View style={styles.quickDestinations}>
-            {popularAreas.map((area) => (
-              <TouchableOpacity
-                key={area.name}
-                style={[
-                  styles.quickDestButton,
-                  tripData.preferredArea === area.name.toLowerCase() && styles.quickDestButtonActive
-                ]}
-                onPress={() => handleAreaSelection(area.name.toLowerCase())}
-              >
-                <Text style={styles.quickDestEmoji}>{area.emoji}</Text>
-                <Text style={[
-                  styles.quickDestText,
-                  tripData.preferredArea === area.name.toLowerCase() && styles.quickDestTextActive
-                ]}>
-                  {area.name}
-                </Text>
-                <Text style={styles.areaDescription}>{area.description}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
         </Animated.View>
+
+
 
         {/* Dates Section */}
         <Animated.View 
@@ -297,6 +495,21 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
               Duration: {calculateDays()} day{calculateDays() !== 1 ? 's' : ''}
             </Text>
           )}
+          
+          {isSingleDayTrip() && (
+            <View style={styles.durationHoursContainer}>
+              <Text style={styles.durationHoursLabel}>Since this is a one-day trip, please specify duration:</Text>
+              <View style={styles.hoursInputContainer}>
+                <CustomInput
+                  label="Duration (in hours)"
+                  placeholder="Enter hours"
+                  value={tripData.durationHours}
+                  onChangeText={updateTripData('durationHours')}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+          )}
         </Animated.View>
 
         {/* Base Location Section */}
@@ -320,13 +533,26 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
           />
           
           {(tripData.baseLocation === 'hotel' || tripData.baseLocation === 'other') && (
-            <CustomInput
-              label="Specific Address"
-              placeholder="Enter hotel name or address"
-              value={tripData.baseAddress}
-              onChangeText={updateTripData('baseAddress')}
-              style={styles.addressInput}
-            />
+            <View style={styles.addressInputContainer}>
+              <CustomInput
+                label="Specific Address"
+                placeholder="Enter hotel name or address"
+                value={tripData.baseAddress}
+                onChangeText={updateTripData('baseAddress')}
+                containerStyle={styles.addressInput}
+              />
+              {tripData.baseLocation === 'hotel' && (
+                <TouchableOpacity
+                  style={styles.locationButton}
+                  onPress={getCurrentLocation}
+                  disabled={gettingLocation}
+                >
+                  <Text style={styles.locationButtonText}>
+                    {gettingLocation ? '📍 Getting location...' : '📍 Use my current location'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         </Animated.View>
 
@@ -363,21 +589,9 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
         >
           <Text style={styles.sectionTitle}>🎯 Trip Details</Text>
           
-          <CustomDropdown
-            label="Number of Travelers"
-            placeholder="How many people?"
-            options={travelerOptions}
-            selectedValue={tripData.travelers}
-            onSelect={updateTripData('travelers')}
-          />
+
           
-          <CustomDropdown
-            label="Trip Type"
-            placeholder="What kind of trip?"
-            options={tripTypeOptions}
-            selectedValue={tripData.tripType}
-            onSelect={updateTripData('tripType')}
-          />
+
         </Animated.View>
 
         {/* AI Info */}
@@ -426,6 +640,24 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
 };
 
 const styles = StyleSheet.create({
+  durationHoursContainer: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: palette.background.paper,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: palette.primary.main,
+  },
+  durationHoursLabel: {
+    fontSize: 14,
+    color: palette.text.primary,
+    marginBottom: 12,
+    fontWeight: '500',
+  },
+  hoursInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: palette.background.default,
@@ -561,7 +793,32 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
   },
   addressInput: {
+    marginTop: 0,
+    backgroundColor: 'transparent',
+  },
+  addressInputContainer: {
     marginTop: 12,
+    backgroundColor: 'transparent',
+  },
+  locationButton: {
+    backgroundColor: palette.primary.main,
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  locationButtonText: {
+    color: palette.secondary.main,
+    fontSize: 14,
+    fontWeight: '600',
   },
   destinationInfo: {
     backgroundColor: palette.background.paper,

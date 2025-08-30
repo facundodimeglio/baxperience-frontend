@@ -13,7 +13,7 @@ import { palette } from '../../theme/colors/palette';
 interface CustomDatePickerProps {
   label?: string;
   placeholder?: string;
-  selectedDate?: Date;
+  selectedDate?: Date | null;
   onDateSelect: (date: Date) => void;
   error?: string;
   containerStyle?: ViewStyle;

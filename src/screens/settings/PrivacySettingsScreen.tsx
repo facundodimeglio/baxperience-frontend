@@ -487,3 +487,8 @@ const styles = StyleSheet.create({
 export default PrivacySettingsScreen;
 
 
+
+
+
+
+
