@@ -67,8 +67,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoContainer: {
-    width: width * 0.7,
-    height: height * 0.3,
+    width: width * 0.9,
+    height: height * 0.6,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -17,6 +17,8 @@ import { CustomButton } from '../../components/common/CustomButton';
 import { CustomDropdown } from '../../components/common/CustomDropdown';
 import { CustomDatePicker } from '../../components/common/CustomDatePicker';
 import { palette } from '../../theme/colors/palette';
+import { itineraryService } from '../../services/api/itineraryService';
+import { GenerateItineraryRequest } from '../../services/api/types';
 
 interface CreateTripScreenProps {
   navigation: any;
@@ -27,6 +29,7 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
   const [slideAnim] = useState(new Animated.Value(30));
   const [loading, setLoading] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
+  const geocodeTimeoutRef = useRef<number | null>(null);
 
   const [tripData, setTripData] = useState({
     startDate: null as Date | null,
@@ -38,9 +41,20 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
     tripName: '',
     preferredArea: '',
     durationHours: '4', // Default duration of 4 hours for one-day itineraries
+    startTime: '09:00', // Default start time
+    originLatitude: null as number | null,
+    originLongitude: null as number | null,
   });
 
   useEffect(() => {
+    // Set today as the default start date
+    const today = new Date();
+    setTripData(prev => ({
+      ...prev,
+      startDate: today,
+      endDate: today // Same day trip by default
+    }));
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -124,6 +138,18 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
     { label: 'Other', value: 'other' },
   ];
 
+  const timeOptions = [
+    { label: '8:00 AM', value: '08:00' },
+    { label: '9:00 AM', value: '09:00' },
+    { label: '10:00 AM', value: '10:00' },
+    { label: '11:00 AM', value: '11:00' },
+    { label: '12:00 PM', value: '12:00' },
+    { label: '1:00 PM', value: '13:00' },
+    { label: '2:00 PM', value: '14:00' },
+    { label: '3:00 PM', value: '15:00' },
+    { label: '4:00 PM', value: '16:00' },
+  ];
+
   const popularAreas = [
     { name: 'Palermo', emoji: '🌳', description: 'Parks & nightlife' },
     { name: 'Recoleta', emoji: '🏛️', description: 'Museums & culture' },
@@ -151,27 +177,64 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
     // Validate duration hours for single-day trips
     if (isSingleDayTrip()) {
       const hours = parseInt(tripData.durationHours);
-      if (isNaN(hours) || hours <= 0 || hours > 24) {
-        Alert.alert('Invalid Duration', 'Please enter a valid duration between 1 and 24 hours.');
+      if (isNaN(hours) || hours <= 0 || hours > 12) {
+        Alert.alert('Invalid Duration', 'Please enter a valid duration between 1 and 12 hours.');
         return;
       }
+    } else {
+      Alert.alert('Multi-day trips', 'Currently, only single-day itineraries are supported. Please select the same date for start and end.');
+      return;
+    }
+
+    // Validate coordinates
+    if (tripData.originLatitude === null || tripData.originLongitude === null) {
+      Alert.alert('Missing Location', 'Please get your current location or enter a specific address to get coordinates.');
+      return;
     }
 
     setLoading(true);
     
     try {
-      // Add Buenos Aires as destination since it's always CABA
-      const completeData = {
-        ...tripData,
-        destination: 'Buenos Aires, CABA',
-        isSingleDay: isSingleDayTrip()
+      // Prepare data for the backend API
+      const requestData: GenerateItineraryRequest = {
+        name: tripData.tripName,
+        fecha_visita: formatDateForAPI(tripData.startDate!),
+        hora_inicio: tripData.startTime,
+        duracion_horas: parseInt(tripData.durationHours),
+        longitud_origen: tripData.originLongitude,
+        latitud_origen: tripData.originLatitude,
+        zona_preferida: tripData.preferredArea && tripData.preferredArea !== 'all' ? tripData.preferredArea : undefined,
+        ubicacion_direccion: tripData.baseLocation, // Incluir la dirección literal
       };
+
+      console.log('🚀 Sending itinerary request:', requestData);
+
+      // Navigate to generation screen first, then generate itinerary
+      navigation.navigate('ItineraryGeneration', { 
+        requestData,
+        tripData: {
+          ...tripData,
+          destination: 'Buenos Aires, CABA',
+          isSingleDay: true,
+        }
+      });
       
-      // Navigate to itinerary generation screen
-      navigation.navigate('ItineraryGeneration', { tripData: completeData });
+    } catch (error: any) {
+      console.error('❌ Failed to generate itinerary:', error);
       
-    } catch (error) {
-      Alert.alert('Error', 'Failed to create trip. Please try again.');
+      let errorMessage = 'Failed to generate itinerary. Please try again.';
+      
+      if (error.statusCode === 401) {
+        errorMessage = 'Please log in to generate an itinerary.';
+      } else if (error.statusCode === 400) {
+        errorMessage = error.details?.message || 'Invalid request data. Please check your selections.';
+      } else if (error.statusCode === 500) {
+        errorMessage = 'Server error. Please try again in a few minutes.';
+      } else if (error.message?.includes('Network')) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -179,10 +242,149 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
 
   const updateTripData = (key: string) => (value: string | Date) => {
     setTripData(prev => ({ ...prev, [key]: value }));
+    
+    // Auto-geocode when baseAddress changes (wait a bit for user to finish typing)
+    if (key === 'baseAddress' && typeof value === 'string' && value.trim().length > 5) {
+      handleAutoGeocode(value);
+    }
+  };
+
+  // Auto-geocoding with debounce
+  const handleAutoGeocode = (address: string) => {
+    // Clear existing timeout
+    if (geocodeTimeoutRef.current) {
+      clearTimeout(geocodeTimeoutRef.current);
+    }
+    
+    // Set new timeout
+    geocodeTimeoutRef.current = setTimeout(async () => {
+      if (address.trim().length > 5) {
+        try {
+          setGettingLocation(true);
+          const coordinates = await geocodeAddress(address);
+          setTripData(prev => ({
+            ...prev,
+            originLatitude: coordinates.latitude,
+            originLongitude: coordinates.longitude
+          }));
+        } catch (error) {
+          // Silently fail auto-geocoding, user can manually get location if needed
+          console.log('Auto-geocoding failed, user can manually get coordinates');
+        } finally {
+          setGettingLocation(false);
+        }
+      }
+    }, 1500); // Wait 1.5 seconds after user stops typing
+  };
+
+  const handleStartDateChange = (date: Date) => {
+    setTripData(prev => {
+      const newData = { ...prev, startDate: date };
+      
+      // If end date is before start date, update it to match start date
+      if (prev.endDate && prev.endDate < date) {
+        newData.endDate = date;
+      }
+      
+      return newData;
+    });
+  };
+
+  const handleEndDateChange = (date: Date) => {
+    setTripData(prev => ({ ...prev, endDate: date }));
+  };
+
+  const handleBaseLocationChange = async (value: string) => {
+    setTripData(prev => ({ ...prev, baseLocation: value }));
+
+    // Auto-geocode predefined locations
+    if (value !== 'hotel' && value !== 'other') {
+      setGettingLocation(true);
+      try {
+        const coordinates = await geocodeAddress(value + ', Buenos Aires');
+        setTripData(prev => ({
+          ...prev,
+          baseLocation: value,
+          originLatitude: coordinates.latitude,
+          originLongitude: coordinates.longitude
+        }));
+      } catch (error) {
+        console.warn('Could not get coordinates for predefined location:', value);
+      } finally {
+        setGettingLocation(false);
+      }
+    } else {
+      // Clear coordinates for manual input options
+      setTripData(prev => ({
+        ...prev,
+        originLatitude: null,
+        originLongitude: null
+      }));
+    }
   };
 
   const handleAreaSelection = (area: string) => {
     setTripData(prev => ({ ...prev, preferredArea: area }));
+  };
+
+  const formatDateForAPI = (date: Date): string => {
+    return date.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+  };
+
+  // Geocoding function to convert address to coordinates
+  const geocodeAddress = async (address: string): Promise<{latitude: number, longitude: number}> => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ', Buenos Aires, Argentina')}&limit=1&addressdetails=1&accept-language=es`,
+        {
+          headers: {
+            'User-Agent': 'BAXperience/1.0',
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const result = data[0];
+        return {
+          latitude: parseFloat(result.lat),
+          longitude: parseFloat(result.lon)
+        };
+      }
+      
+      throw new Error('Address not found');
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      throw error;
+    }
+  };
+
+  const getCoordinatesFromAddress = async () => {
+    if (!tripData.baseAddress.trim()) {
+      Alert.alert('Missing Address', 'Please enter an address first.');
+      return;
+    }
+
+    setGettingLocation(true);
+    
+    try {
+      const coordinates = await geocodeAddress(tripData.baseAddress);
+      setTripData(prev => ({
+        ...prev,
+        originLatitude: coordinates.latitude,
+        originLongitude: coordinates.longitude
+      }));
+      Alert.alert('Success!', 'Coordinates have been obtained from your address.');
+    } catch (error) {
+      Alert.alert('Error', 'Could not get coordinates from this address. Please check the address or use current location.');
+    } finally {
+      setGettingLocation(false);
+    }
   };
 
   const calculateDays = () => {
@@ -343,8 +545,13 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
           
           try {
             const address = await reverseGeocode(latitude, longitude);
-            setTripData(prev => ({ ...prev, baseAddress: address }));
-            Alert.alert('Perfect!', 'Address has been filled with your current location in Buenos Aires.');
+            setTripData(prev => ({ 
+              ...prev, 
+              baseAddress: address,
+              originLatitude: latitude,
+              originLongitude: longitude
+            }));
+            Alert.alert('Perfect!', 'Address and coordinates have been saved from your current location in Buenos Aires.');
           } catch (error) {
             if (error instanceof Error && error.message === 'LOCATION_NOT_IN_CABA') {
               // This is a validation case, not a technical error - don't log to console
@@ -473,20 +680,22 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
               label="Start Date"
               placeholder="Select start date"
               selectedDate={tripData.startDate}
-              onDateSelect={updateTripData('startDate')}
+              onDateSelect={handleStartDateChange}
               containerStyle={styles.dateInput}
-              minimumAge={0}
-              maximumAge={0}
+              mode="date"
+              minimumDate={new Date()} // Don't allow past dates
+              maximumDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))} // Up to 1 year in future
             />
             
             <CustomDatePicker
               label="End Date"
               placeholder="Select end date"
               selectedDate={tripData.endDate}
-              onDateSelect={updateTripData('endDate')}
+              onDateSelect={handleEndDateChange}
               containerStyle={styles.dateInput}
-              minimumAge={0}
-              maximumAge={0}
+              mode="date"
+              minimumDate={tripData.startDate || new Date()} // End date can't be before start date
+              maximumDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
             />
           </View>
           
@@ -512,6 +721,28 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
           )}
         </Animated.View>
 
+        {/* Start Time Section */}
+        {isSingleDayTrip() && (
+          <Animated.View 
+            style={[
+              styles.section,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }]
+              }
+            ]}
+          >
+            <Text style={styles.sectionTitle}>🕐 Start Time</Text>
+            <CustomDropdown
+              label="What time would you like to start?"
+              placeholder="Select start time"
+              options={timeOptions}
+              selectedValue={tripData.startTime}
+              onSelect={updateTripData('startTime')}
+            />
+          </Animated.View>
+        )}
+
         {/* Base Location Section */}
         <Animated.View 
           style={[
@@ -529,7 +760,7 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
             placeholder="Where will you be staying?"
             options={baseLocationOptions}
             selectedValue={tripData.baseLocation}
-            onSelect={updateTripData('baseLocation')}
+            onSelect={handleBaseLocationChange}
           />
           
           {(tripData.baseLocation === 'hotel' || tripData.baseLocation === 'other') && (
@@ -543,7 +774,7 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
               />
               {tripData.baseLocation === 'hotel' && (
                 <TouchableOpacity
-                  style={styles.locationButton}
+                  style={[styles.locationButton, styles.primaryLocationButton]}
                   onPress={getCurrentLocation}
                   disabled={gettingLocation}
                 >
@@ -551,6 +782,18 @@ export const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }
                     {gettingLocation ? '📍 Getting location...' : '📍 Use my current location'}
                   </Text>
                 </TouchableOpacity>
+              )}
+              {(tripData.originLatitude && tripData.originLongitude) && (
+                <View style={styles.coordinatesDisplay}>
+                  <Text style={styles.coordinatesText}>
+                    📍 Coordinates: {tripData.originLatitude.toFixed(6)}, {tripData.originLongitude.toFixed(6)}
+                  </Text>
+                </View>
+              )}
+              {gettingLocation && (
+                <View style={styles.geocodingIndicator}>
+                  <Text style={styles.geocodingText}>🔍 Finding coordinates automatically...</Text>
+                </View>
               )}
             </View>
           )}
@@ -820,6 +1063,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  locationButtonsContainer: {
+    gap: 8,
+    marginTop: 8,
+  },
+  primaryLocationButton: {
+    backgroundColor: palette.primary.main,
+  },
+  secondaryLocationButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: palette.primary.main,
+  },
+  secondaryLocationButtonText: {
+    color: palette.primary.main,
+  },
+  disabledButtonText: {
+    opacity: 0.5,
+  },
+  coordinatesDisplay: {
+    backgroundColor: palette.background.paper,
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: palette.primary.main,
+  },
+  coordinatesText: {
+    fontSize: 12,
+    color: palette.text.secondary,
+    fontFamily: 'monospace',
+  },
   destinationInfo: {
     backgroundColor: palette.background.paper,
     borderRadius: 12,
@@ -843,5 +1117,19 @@ const styles = StyleSheet.create({
     color: palette.text.disabled,
     textAlign: 'center',
     marginTop: 2,
+  },
+  geocodingIndicator: {
+    backgroundColor: palette.background.paper,
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: palette.primary.light,
+  },
+  geocodingText: {
+    fontSize: 12,
+    color: palette.primary.main,
+    fontStyle: 'italic',
   },
 });

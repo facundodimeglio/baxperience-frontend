@@ -8,6 +8,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { palette } from '../../theme/colors/palette';
+import { itineraryService } from '../../services/api/itineraryService';
 
 const { width } = Dimensions.get('window');
 
@@ -15,6 +16,7 @@ interface ItineraryGenerationScreenProps {
   navigation: any;
   route: {
     params: {
+      requestData: any;
       tripData: any;
     };
   };
@@ -24,11 +26,12 @@ export const ItineraryGenerationScreen: React.FC<ItineraryGenerationScreenProps>
   navigation, 
   route 
 }) => {
-  const { tripData } = route.params;
+  const { requestData, tripData } = route.params;
   const [loadingStage, setLoadingStage] = useState(0);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [rotateAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.8));
+  const [generatedItinerary, setGeneratedItinerary] = useState<any>(null);
 
   const loadingStages = [
     {
@@ -101,149 +104,35 @@ export const ItineraryGenerationScreen: React.FC<ItineraryGenerationScreenProps>
       if (loadingStage < loadingStages.length - 1) {
         setLoadingStage(loadingStage + 1);
       } else {
-        // Navigate to generated itinerary
-        navigation.replace('GeneratedItinerary', { 
-          tripData,
-          generatedItinerary: generateMockItinerary(tripData)
-        });
+        // Call the real API when all stages are complete
+        generateRealItinerary();
       }
     }, loadingStages[loadingStage].duration);
 
     return () => clearTimeout(timer);
   }, [loadingStage]);
 
-  const generateMockItinerary = (tripData: any) => {
-    // Mock itinerary data - in real app this would come from your clustering API
-    return {
-      tripName: tripData.tripName,
-      destination: 'Buenos Aires, CABA',
-      dates: {
-        start: tripData.startDate,
-        end: tripData.endDate,
-      },
-      baseLocation: tripData.baseLocation,
-      transportMode: tripData.transportMode,
-      days: [
-        {
-          day: 1,
-          date: tripData.startDate,
-          title: "Cultural Discovery",
-          pois: [
-            {
-              id: 1,
-              name: "Museo Nacional de Bellas Artes",
-              category: "Museums",
-              time: "09:00 - 11:00",
-              duration: 120,
-              description: "World-class art collection in a beautiful historic building",
-              rating: 4.6,
-              reviews: 1243,
-              coordinates: { lat: -34.5843, lng: -58.3926 },
-              clusterInfo: {
-                clusterId: 1,
-                clusterName: "Recoleta Cultural Zone",
-                nearbyPois: 8,
-              }
-            },
-            {
-              id: 2,
-              name: "Cementerio de la Recoleta",
-              category: "Historical Sites",
-              time: "11:30 - 12:30",
-              duration: 60,
-              description: "Famous cemetery with elaborate mausoleums and Eva Perón's tomb",
-              rating: 4.4,
-              reviews: 2156,
-              coordinates: { lat: -34.5879, lng: -58.3931 },
-              clusterInfo: {
-                clusterId: 1,
-                clusterName: "Recoleta Cultural Zone",
-                nearbyPois: 8,
-              }
-            },
-            {
-              id: 3,
-              name: "Café Tortoni",
-              category: "Restaurants",
-              time: "13:00 - 14:00",
-              duration: 60,
-              description: "Historic café famous for tango shows and traditional atmosphere",
-              rating: 4.2,
-              reviews: 3421,
-              coordinates: { lat: -34.6118, lng: -58.3725 },
-              clusterInfo: {
-                clusterId: 2,
-                clusterName: "Historic Center",
-                nearbyPois: 12,
-              }
-            },
-          ],
-          totalDistance: "2.3 km",
-          walkingTime: "28 minutes",
-          clustersSummary: [
-            { name: "Recoleta Cultural Zone", pois: 2, color: "#4ECDC4" },
-            { name: "Historic Center", pois: 1, color: "#45B7D1" },
-          ]
-        },
-        {
-          day: 2,
-          date: new Date(tripData.startDate.getTime() + 24 * 60 * 60 * 1000),
-          title: "Neighborhood Explorer",
-          pois: [
-            {
-              id: 4,
-              name: "Caminito",
-              category: "Attractions",
-              time: "10:00 - 11:30",
-              duration: 90,
-              description: "Colorful street museum in La Boca with tango performances",
-              rating: 4.1,
-              reviews: 5632,
-              coordinates: { lat: -34.6394, lng: -58.3628 },
-              clusterInfo: {
-                clusterId: 3,
-                clusterName: "La Boca Artistic Quarter",
-                nearbyPois: 6,
-              }
-            },
-            {
-              id: 5,
-              name: "Puerto Madero",
-              category: "Districts",
-              time: "14:00 - 16:00",
-              duration: 120,
-              description: "Modern waterfront district with upscale dining and architecture",
-              rating: 4.5,
-              reviews: 1876,
-              coordinates: { lat: -34.6118, lng: -58.3960 },
-              clusterInfo: {
-                clusterId: 4,
-                clusterName: "Waterfront Modern",
-                nearbyPois: 10,
-              }
-            },
-          ],
-          totalDistance: "4.1 km",
-          walkingTime: "48 minutes",
-          clustersSummary: [
-            { name: "La Boca Artistic Quarter", pois: 1, color: "#FF6B6B" },
-            { name: "Waterfront Modern", pois: 1, color: "#4ECDC4" },
-          ]
-        },
-      ],
-      stats: {
-        totalPois: 5,
-        totalDistance: "6.4 km", 
-        clustersUsed: 4,
-        areasExplored: "4 neighborhoods",
-      },
-      aiInsights: [
-        "Your itinerary balances cultural attractions with neighborhood exploration",
-        "All locations are within walking distance or short transport rides",
-        "We've included 2 highly-rated restaurants based on your preferences",
-        "Special events happening during your visit have been added",
-      ]
-    };
+  const generateRealItinerary = async () => {
+    try {
+      console.log('📤 Calling real API to generate itinerary...');
+      const response = await itineraryService.generatePersonalizedItinerary(requestData);
+      
+      console.log('✅ Itinerary generated successfully:', response);
+      setGeneratedItinerary(response.itinerario_propuesto);
+      
+      // Navigate to generated itinerary screen with real data
+      navigation.replace('GeneratedItinerary', { 
+        itinerary: response.itinerario_propuesto,
+        tripData
+      });
+      
+    } catch (error: any) {
+      console.error('❌ Failed to generate itinerary:', error);
+      
+      // Navigate back to CreateTrip with error
+      navigation.goBack();
+      // You could also show an error alert here
+    }
   };
 
   const currentStage = loadingStages[loadingStage];
@@ -300,9 +189,9 @@ export const ItineraryGenerationScreen: React.FC<ItineraryGenerationScreenProps>
         <View style={styles.tripInfo}>
           <Text style={styles.tripInfoTitle}>Creating itinerary for:</Text>
           <Text style={styles.tripName}>{tripData.tripName}</Text>
-                  <Text style={styles.tripDetails}>
-          Buenos Aires, CABA • {tripData.startDate?.toLocaleDateString()} - {tripData.endDate?.toLocaleDateString()}
-        </Text>
+          <Text style={styles.tripDetails}>
+            Buenos Aires, CABA • {tripData.startDate?.toLocaleDateString()}
+          </Text>
         </View>
 
         {/* Loading Stages */}

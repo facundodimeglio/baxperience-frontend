@@ -10,6 +10,9 @@ import {
 import { PreferenceCard } from '../../components/common/PreferenceCard';
 import { CustomButton } from '../../components/common/CustomButton';
 import { palette } from '../../theme/colors/palette';
+import { authService } from '../../services/api/authService';
+import { ApiException } from '../../services/api/client';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface TravelPreferencesScreenProps {
   navigation: any;
@@ -32,45 +35,46 @@ export const TravelPreferencesScreen: React.FC<TravelPreferencesScreenProps> = (
   
   const [selectedPreferences, setSelectedPreferences] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
 
   const travelPreferences: TravelPreference[] = [
     {
-      id: 'museos',
+      id: '1',
       title: 'Museums',
       description: 'Museums, historical sites, and educational experiences',
       icon: '🏛️',
       category: 'cultural'
     },
     {
-      id: 'gastronomia',
+      id: '2',
       title: 'Gastronomy',
       description: 'Local cuisine, restaurants, food tours, and culinary experiences',
       icon: '🍽️',
       category: 'culinary'
     },
     {
-      id: 'monumentos',
+      id: '3',
       title: 'Monuments',
       description: 'Historical monuments, landmarks, and architectural sites',
       icon: '🗿',
       category: 'historical'
     },
     {
-      id: 'lugares_historicos',
+      id: '4',
       title: 'Historic Places',
       description: 'Historic sites, heritage buildings, and cultural landmarks',
       icon: '🏰',
       category: 'historical'
     },
     {
-      id: 'entretenimiento',
+      id: '5',
       title: 'Entertainment',
       description: 'Theaters, cinemas, shows, and entertainment venues',
       icon: '🎭',
       category: 'entertainment'
     },
     {
-      id: 'eventos',
+      id: '6',
       title: 'Events',
       description: 'Cultural events, festivals, concerts, and special occasions',
       icon: '🎪',
@@ -103,39 +107,97 @@ export const TravelPreferencesScreen: React.FC<TravelPreferencesScreenProps> = (
     setLoading(true);
     
     try {
-      // Combine all registration data
-      const completeUserData = {
-        ...registrationData,
-        ...profileData,
-        email,
-        travel_preferences: selectedPreferences,
-        preferences_count: selectedPreferences.length,
-        preference_categories: [...new Set(
-          selectedPreferences.map(id => 
-            travelPreferences.find(p => p.id === id)?.category || 'other'
-          )
-        )],
-        registration_completed_at: new Date().toISOString(),
+      console.log('📝 Preparing registration data...');
+      console.log('📧 Email:', email);
+      console.log('👤 Registration data:', registrationData);
+      console.log('📋 Profile data:', profileData);
+      console.log('🎯 Selected preferences:', selectedPreferences);
+
+      // Create registration request manually to preserve apellido from profileData and ensure all fields are strings
+      // Convertir y validar las preferencias seleccionadas
+      const validPreferences = selectedPreferences
+        .filter(pref => pref && pref.trim() !== '')
+        .map(pref => {
+          const prefId = parseInt(pref, 10);
+          return isNaN(prefId) ? null : prefId;
+        })
+        .filter((prefId): prefId is number => prefId !== null);
+      
+      // Log para debugging
+      console.log('🔍 Selected preferences (raw):', selectedPreferences);
+      console.log('🔍 Valid preferences (parsed):', validPreferences);
+      
+      if (validPreferences.length === 0) {
+        Alert.alert(
+          'Invalid Preferences',
+          'Please select at least one valid preference category.',
+          [{ text: 'OK' }]
+        );
+        setLoading(false);
+        return;
+      }
+        
+      const registrationRequest = {
+        email: String(email),
+        password: String(registrationData.password),
+        nombre: String(profileData.nombre || registrationData.fullName.split(' ')[0] || 'Usuario'),
+        apellido: String(profileData.apellido || registrationData.fullName.split(' ').slice(1).join(' ') || 'Sin Apellido'),
+        username: String(profileData.username || email.split('@')[0]),
+        fechaNacimiento: String(profileData.fecha_nacimiento || profileData.fechaNacimiento || '1990-01-01'),
+        paisOrigen: String(profileData.pais_origen || profileData.paisOrigen || 'Argentina'),
+        ciudadOrigen: String(profileData.ciudad_origen || profileData.ciudadOrigen || 'Buenos Aires'),
+        idiomaPreferido: String(profileData.idioma_preferido || profileData.idiomaPreferido || 'es'),
+        telefono: String(profileData.telefono || '123456789'),
+        tipoViajero: String(profileData.tipo_viajero || profileData.tipoViajero || 'explorador'),
+        genero: String(profileData.genero || 'other'),
+        preferencias: validPreferences, // Usar las preferencias validadas
       };
+
+      console.log('🚀 Sending registration request:', registrationRequest);
       
-      console.log('Complete User Registration Data:', completeUserData);
+      // Make the real API call
+      const response = await authService.register(registrationRequest);
       
-      // Simulate API call to complete registration
-      await new Promise<void>(resolve => setTimeout(() => resolve(), 2000));
+      console.log('✅ Registration successful:', response.user);
+      
+      // Update authentication state
+      login();
       
       Alert.alert(
         'Welcome to Baxperience! 🎉',
-        `Great! We've personalized your experience based on your ${selectedPreferences.length} selected interests. You're all set to explore!`,
+        `Great! Welcome ${response.user.nombre}! We've personalized your experience based on your ${selectedPreferences.length} selected interests. You're all set to explore!`,
         [
           {
             text: 'Start Exploring',
-            onPress: () => navigation.navigate('Main')
+            onPress: () => {
+              // Navigation will be handled automatically by auth state change
+            }
           }
         ]
       );
       
     } catch (error) {
-      Alert.alert('Error', 'Failed to complete registration. Please try again.');
+      console.error('❌ Registration error:', error);
+      
+      let errorMessage = 'Failed to complete registration. Please try again.';
+      
+      if (error instanceof ApiException) {
+        switch (error.statusCode) {
+          case 400:
+            errorMessage = 'Please check that all your information is correct and try again.';
+            break;
+          case 409:
+            errorMessage = 'An account with this email already exists. Please try logging in instead.';
+            break;
+          case 0:
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+            break;
+          default:
+            errorMessage = error.message || errorMessage;
+        }
+      }
+      
+      Alert.alert('Registration Failed', errorMessage);
     } finally {
       setLoading(false);
     }

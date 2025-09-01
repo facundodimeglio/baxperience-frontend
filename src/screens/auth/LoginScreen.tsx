@@ -8,10 +8,15 @@ import {
   Platform,
   Text,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { CustomInput } from '../../components/common/CustomInput';
 import { CustomButton } from '../../components/common/CustomButton';
 import { palette } from '../../theme/colors/palette';
+import { authService } from '../../services/api/authService';
+import { ApiException } from '../../services/api/client';
+import { validateEmail } from '../../utils/validators/emailValidator';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface LoginScreenProps {
   navigation: any;
@@ -21,19 +26,84 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({
+    email: '',
+    password: '',
+  });
+  const { login } = useAuth();
 
   const handleLogin = async () => {
+    // Validate input
+    const emailValidation = validateEmail(email);
+    const newErrors = {
+      email: emailValidation.isValid ? '' : emailValidation.message || 'Please enter a valid email',
+      password: password.trim() ? '' : 'Password is required',
+    };
+
+    setErrors(newErrors);
+
+    // Check if validation passed
+    if (Object.values(newErrors).some(error => error !== '')) {
+      return;
+    }
+
     setLoading(true);
     try {
-      // Implement your login logic here
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('🔐 Attempting login...');
       
-      // Navigate to main app
-      navigation.navigate('Main');
+      const response = await authService.login({
+        email: String(email.trim().toLowerCase()),
+        password: String(password),
+      });
+
+      console.log('✅ Login successful:', response.user);
+      
+      // Update authentication state
+      login();
+      
+      Alert.alert(
+        'Welcome Back!',
+        `Hello ${response.user.nombre}! You have successfully logged in.`,
+        [
+          {
+            text: 'Continue',
+            onPress: () => {
+              // Navigation will be handled automatically by auth state change
+            },
+          },
+        ]
+      );
+      
     } catch (error) {
-      console.error(error);
+      console.error('❌ Login error:', error);
+      
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      
+      if (error instanceof ApiException) {
+        switch (error.statusCode) {
+          case 401:
+            errorMessage = 'Invalid email or password. Please check your credentials.';
+            break;
+          case 400:
+            errorMessage = 'Please enter valid email and password.';
+            break;
+          case 0:
+            errorMessage = 'Network error. Please check your internet connection.';
+            break;
+          default:
+            errorMessage = error.message || errorMessage;
+        }
+      }
+      
+      Alert.alert('Login Failed', errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const clearError = (field: keyof typeof errors) => {
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
@@ -62,19 +132,27 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             label="Email"
             placeholder="Enter your email"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              clearError('email');
+            }}
             keyboardType="email-address"
             autoCapitalize="none"
             autoComplete="email"
+            error={errors.email}
           />
 
           <CustomInput
             label="Password"
             placeholder="Enter your password"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => {
+              setPassword(text);
+              clearError('password');
+            }}
             secureTextEntry
             autoComplete="password"
+            error={errors.password}
           />
 
           <TouchableOpacity
