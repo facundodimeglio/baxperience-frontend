@@ -226,6 +226,7 @@ export const CompleteProfileScreen: React.FC<CompleteProfileScreenProps> = ({
               selectedDate={profileData.fecha_nacimiento}
               onDateSelect={updateProfileData('fecha_nacimiento')}
               error={errors.fecha_nacimiento}
+              mode="birthdate"
             />
             
             {profileData.fecha_nacimiento && (

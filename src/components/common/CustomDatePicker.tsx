@@ -37,7 +37,18 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   const [isVisible, setIsVisible] = useState(false);
   
   // Initialize with current date or selected date
-  const initDate = selectedDate || new Date();
+  const getInitialDate = () => {
+    if (selectedDate) return selectedDate;
+    if (mode === 'birthdate') {
+      // For birthdate, initialize to a reasonable age (e.g., 25 years old)
+      const reasonableAge = new Date();
+      reasonableAge.setFullYear(reasonableAge.getFullYear() - 25);
+      return reasonableAge;
+    }
+    return new Date();
+  };
+  
+  const initDate = getInitialDate();
   const [selectedDay, setSelectedDay] = useState(initDate.getDate());
   const [selectedMonth, setSelectedMonth] = useState(initDate.getMonth());
   const [selectedYear, setSelectedYear] = useState(initDate.getFullYear());
@@ -52,8 +63,8 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   // Configure year range based on mode
   let minYear, maxYear;
   if (mode === 'birthdate') {
-    minYear = currentYear - 100; // 100 years ago
-    maxYear = currentYear - 13;  // 13 years ago
+    minYear = currentYear - 120; // 120 years ago (to cover very elderly users)
+    maxYear = currentYear - 13;  // 13 years ago (minimum age requirement)
   } else {
     // For trip dates
     minYear = minimumDate ? minimumDate.getFullYear() : currentYear;
@@ -61,6 +72,11 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   }
   
   const years = Array.from({ length: maxYear - minYear + 1 }, (_, i) => minYear + i);
+  
+  // For birthdate mode, reverse the years array so recent years appear first
+  if (mode === 'birthdate') {
+    years.reverse();
+  }
   const days = Array.from({ length: getDaysInMonth(selectedMonth, selectedYear) }, (_, i) => i + 1);
 
   function getDaysInMonth(month: number, year: number) {
@@ -96,10 +112,10 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
       setSelectedMonth(selectedDate.getMonth());
       setSelectedYear(selectedDate.getFullYear());
     } else {
-      const today = new Date();
-      setSelectedDay(today.getDate());
-      setSelectedMonth(today.getMonth());
-      setSelectedYear(today.getFullYear());
+      const resetDate = getInitialDate();
+      setSelectedDay(resetDate.getDate());
+      setSelectedMonth(resetDate.getMonth());
+      setSelectedYear(resetDate.getFullYear());
     }
     setIsVisible(false);
   };
